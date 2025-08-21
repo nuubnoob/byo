@@ -2,6 +2,7 @@ cluster:
   name: my-airgap-remote-cluster
   namespace: kcm-system
   replicas: 1
+  version: "v1.32.6+k0s.0"
   service:
     type: NodePort
     apiPort: 30443
