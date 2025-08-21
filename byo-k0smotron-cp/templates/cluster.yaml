@@ -1,0 +1,13 @@
+apiVersion: k0smotron.io/v1beta1
+kind: Cluster
+metadata:
+  name: {{ .Values.cluster.name }}
+  namespace: {{ .Values.cluster.namespace }}
+spec:
+  replicas: {{ .Values.cluster.replicas | default 1 }}
+  version: {{ default "" .Values.cluster.version | quote }}
+  service:
+    type: {{ .Values.cluster.service.type | quote }}
+    apiPort: {{ .Values.cluster.service.apiPort }}
+    konnectivityPort: {{ .Values.cluster.service.konnectivityPort }}
+

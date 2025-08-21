@@ -1,0 +1,6 @@
+apiVersion: v2
+name: byo-k0smotron-cp
+description: Tiny chart that creates a k0smotron Cluster CR (control-plane only)
+version: 0.1.0
+appVersion: "v1"
+

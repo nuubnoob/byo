@@ -1,0 +1,9 @@
+cluster:
+  name: my-airgap-remote-cluster
+  namespace: kcm-system
+  replicas: 1
+  service:
+    type: NodePort
+    apiPort: 30443
+    konnectivityPort: 30132
+
