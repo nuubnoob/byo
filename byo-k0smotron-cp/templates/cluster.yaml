@@ -1,13 +1,121 @@
-apiVersion: k0smotron.io/v1beta1
-kind: Cluster
+apiVersion: v1
+kind: Namespace
 metadata:
-  name: {{ .Values.cluster.name }}
-  namespace: {{ .Values.cluster.namespace }}
-spec:
-  replicas: {{ .Values.cluster.replicas | default 1 }}
-  version: {{ default "" .Values.cluster.version | quote }}
-  service:
-    type: {{ .Values.cluster.service.type | quote }}
-    apiPort: {{ .Values.cluster.service.apiPort }}
-    konnectivityPort: {{ .Values.cluster.service.konnectivityPort }}
+  name: monitoring2
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring2
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
 
+    scrape_configs:
+      - job_name: "prometheus"
+        static_configs:
+          - targets: ["localhost:9091"]
+
+      - job_name: "node-exporter"
+        static_configs:
+          - targets: ["node-exporter:9110"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-deployment
+  namespace: monitoring2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.52.0
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+          ports:
+            - containerPort: 9091
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus/
+            - name: prometheus-storage
+              mountPath: /prometheus
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+        - name: prometheus-storage
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service
+  namespace: monitoring2
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - name: prometheus
+      port: 9091
+      targetPort: 9091
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: monitoring2
+  labels:
+    app: node-exporter
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      hostPID: true
+      hostNetwork: true
+      containers:
+        - name: node-exporter
+          image: prom/node-exporter:v1.8.1
+          args:
+            - "--path.rootfs=/host"
+          ports:
+            - containerPort: 9110
+              hostPort: 9110
+          volumeMounts:
+            - name: rootfs
+              mountPath: /host
+              readOnly: true
+      volumes:
+        - name: rootfs
+          hostPath:
+            path: /
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-exporter
+  namespace: monitoring2
+spec:
+  selector:
+    app: node-exporter
+  ports:
+    - name: metrics
+      port: 9110
+      targetPort: 9110
+  clusterIP: None
